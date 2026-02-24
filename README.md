@@ -1,6 +1,3 @@
-Since you're setting this up for a Git repository, I've structured this `README.md` to be professional, clear, and highly functional. I've integrated your saved IP preference into the configuration section to keep your workflow seamless.
-
-```markdown
 # Redsail RS720C Web Controller
 
 A lightweight, web-based interface for controlling the **Redsail RS720C** cutting plotter. This application allows you to manage vector cuts (HPGL/PLT) via a local web browser, streaming data directly to your hardware over Serial/USB.
