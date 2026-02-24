@@ -50,13 +50,13 @@ Most Redsail RS720C units use the following default settings. Update your `.env`
 ## 📥 Installation
 
 1. **Clone the repository:**
-   ```bash
+```bash
    git clone [https://github.com/your-username/redsail-rs720c-web.git](https://github.com/your-username/redsail-rs720c-web.git)
    cd redsail-rs720c-web
-
 ```
 
 2. **Install Dependencies:**
+
 ```bash
 # If using Node.js
 npm install
