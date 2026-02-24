@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>REDSAIL RS720C</title>
+    <script src="https://unpkg.com/fabric@5.3.0/dist/fabric.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="manifest" href="/site.webmanifest">
+    <meta name="theme-color" content="#ffffff">
+</head>
+<body>
+
+<header class="mobile-nav">
+    <div class="brand"><i class="ph-bold ph-sketch-logo"></i> REDSAIL RS720C</div>
+    <div style="display: flex; gap: 12px; align-items: center;">
+        <div class="status-item" style="font-size: 10px; display: flex; align-items: center; gap: 6px;">
+            <span id="status-dot-mobile" class="dot"></span>
+            <span id="status-text-mobile">OFFLINE</span>
+        </div>
+        <button class="nav-toggle" onclick="toggleSidebar()"><i class="ph ph-list"></i></button>
+    </div>
+</header>
+
+<div id="alert-toast" class="alert-toast">
+    <i class="ph-bold ph-warning-octagon"></i>
+    <span id="alert-msg"></span>
+</div>
+
+<aside id="sidebar" class="sidebar">
+    <div class="sidebar-header" style="display: none; justify-content: space-between; align-items: center; margin-bottom: 20px;" id="sidebar-mobile-title">
+        <div class="brand" style="font-size: 16px;"><i class="ph-bold ph-sketch-logo"></i> OPTIONS</div>
+        <button class="btn" onclick="toggleSidebar()" style="padding: 8px; min-height: auto;"><i class="ph ph-x"></i></button>
+    </div>
+    <div class="card">
+        <div class="card-title"><i class="ph ph-file-plus"></i> Project</div>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn btn-accent ui-ctrl" onclick="document.getElementById('loader').click()" style="flex:1;">Import SVG</button>
+            <button class="btn ui-ctrl" onclick="if(confirm('Clear all?')) { canvas.clear(); canvas.setBackgroundColor('#fff', () => canvas.renderAll()); updateLayers(); saveState(); }" title="Clear Canvas"><i class="ph ph-eraser"></i></button>
+        </div>
+        <input type="file" id="loader" accept=".svg" style="display:none">
+    </div>
+
+    <div class="card">
+        <div class="card-title"><i class="ph ph-cursor-click"></i> Selection</div>
+        <div id="no-selection" style="color:#666; font-size:12px; text-align:center; padding: 10px;">Select object</div>
+        <div id="selection-props" style="display:none">
+            <div class="prop-grid">
+                <div class="input-group"><label>Width</label><input type="number" id="obj-w" class="ui-ctrl" step="0.1" onchange="resizeObj('w')"></div>
+                <div class="input-group"><label>Height</label><input type="number" id="obj-h" class="ui-ctrl" step="0.1" onchange="resizeObj('h')"></div>
+                <div class="input-group" style="grid-column: span 2;">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size: 10px; color: #aaa;">
+                        <input type="checkbox" id="lock-ratio" checked style="width:auto;"> LOCK RATIO
+                    </label>
+                </div>
+                <div class="input-group"><label>X</label><input type="number" id="obj-x" class="ui-ctrl" step="0.1" onchange="moveObj()"></div>
+                <div class="input-group"><label>Y</label><input type="number" id="obj-y" class="ui-ctrl" step="0.1" onchange="moveObj()"></div>
+                <div class="input-group"><label>Angle</label><input type="number" id="obj-angle" class="ui-ctrl" step="1" onchange="rotateObj()"></div>
+                <div class="input-group"><label>Flip</label>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="btn ui-ctrl" onclick="flipObj('h')" style="flex:1;"><i class="ph ph-flip-horizontal"></i></button>
+                        <button class="btn ui-ctrl" onclick="flipObj('v')" style="flex:1;"><i class="ph ph-flip-vertical"></i></button>
+                    </div>
+                </div>
+                <div class="input-group" style="grid-column: span 2;">
+                    <label>Curve Precision (Segments)</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="range" id="curve-steps" class="ui-ctrl" min="4" max="128" value="12" style="flex:1;" oninput="document.getElementById('curve-val').innerText = this.value">
+                        <span id="curve-val" style="font-family: 'JetBrains Mono'; font-size: 12px; color: var(--accent); width: 30px;">12</span>
+                        <button class="btn ui-ctrl" onclick="applyPrecision()" style="padding: 0 8px; min-height: 32px;">Set</button>
+                    </div>
+                </div>
+            </div>
+            <div style="margin-top:12px; display:grid; grid-template-columns: 1fr; gap:8px;">
+                <button class="btn ui-ctrl btn-danger" onclick="deleteObj()" style="width:100%;"><i class="ph ph-trash"></i> Delete</button>
+            </div>
+            <div style="margin-top:8px; display:grid; grid-template-columns: repeat(3, 1fr); gap:4px;">
+                <button class="btn ui-ctrl" onclick="alignObj('left')"><i class="ph ph-align-left"></i></button>
+                <button class="btn ui-ctrl" onclick="alignObj('centerX')"><i class="ph ph-align-center-horizontal"></i></button>
+                <button class="btn ui-ctrl" onclick="alignObj('right')"><i class="ph ph-align-right"></i></button>
+                <button class="btn ui-ctrl" onclick="alignObj('top')"><i class="ph ph-align-top"></i></button>
+                <button class="btn ui-ctrl" onclick="alignObj('centerY')"><i class="ph ph-align-center-vertical"></i></button>
+                <button class="btn ui-ctrl" onclick="alignObj('bottom')"><i class="ph ph-align-bottom"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>Layers</span>
+            <div style="display: flex; gap: 4px;">
+                <button class="btn ui-ctrl" onclick="selectAllLayers(true)" style="padding: 2px 6px; font-size: 10px;">ALL</button>
+                <button class="btn ui-ctrl" onclick="selectAllLayers(false)" style="padding: 2px 6px; font-size: 10px;">NONE</button>
+            </div>
+        </div>
+        <div id="layer-list" style="max-height: 200px; overflow-y: auto;"></div>
+    </div>
+
+    <div class="card">
+        <div class="card-title"><i class="ph ph-target"></i> Calibration & Origin</div>
+        <div class="prop-grid">
+            <div class="input-group" style="grid-column: span 2;">
+                <label>Steps/mm (Carriage Width Scale)</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="number" id="steps-mm" class="ui-ctrl" value="40" onchange="drawBed()">
+                    <button class="btn ui-ctrl" onclick="toggleCalibration()" title="Calibration Helper"><i class="ph ph-calculator"></i></button>
+                </div>
+                <div id="cal-helper" style="display:none; margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px; font-size: 10px;">
+                    <div style="margin-bottom:8px; font-weight:bold; color: var(--accent);">Calibration Helper:</div>
+                    1. Cut a 100mm line.<br>
+                    2. Measure actual cut length.<br>
+                    <div style="display:flex; gap: 5px; align-items:center; margin-top:5px;">
+                        <span>Measured:</span>
+                        <input type="number" id="meas-val" class="ui-ctrl" style="height:24px; width: 60px;" placeholder="mm">
+                        <button class="btn ui-ctrl" onclick="applyCal()" style="height:24px; padding: 0 5px;">APPLY</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-title" style="margin-top:15px; border-top:1px solid #333; padding-top:10px;">Coordinates (Steps)</div>
+        <div class="prop-grid">
+            <div class="input-group"><label>X Pos</label><input type="number" id="home-x-input" class="ui-ctrl" value="0" onchange="manualSetOrigin()"></div>
+            <div class="input-group"><label>Y Pos</label><input type="number" id="home-y-input" class="ui-ctrl" value="0" onchange="manualSetOrigin()"></div>
+        </div>
+        <button class="btn ui-ctrl" style="margin-top:8px; width:100%; font-size:10px; background: #333;" onclick="setOrigin()">ZERO CURRENT POSITION (0,0)</button>
+    </div>
+
+    <div class="card">
+        <div class="card-title"><i class="ph ph-bounding-box"></i> Physical Limits (Steps)</div>
+        <div class="prop-grid">
+            <div class="input-group">
+                <label>Carriage Width (X)</label>
+                <input type="number" id="max-x" class="ui-ctrl" value="25200" onchange="drawBed()">
+            </div>
+            <div class="input-group">
+                <label>Roll Depth (Y)</label>
+                <input type="number" id="max-y" class="ui-ctrl" value="1000000" onchange="drawBed()">
+            </div>
+            <div class="input-group"><label>Snap Grid (MM)</label><input type="number" id="snap-value" class="ui-ctrl" value="5"></div>
+        </div>
+        <div style="margin-top:12px; display: flex; flex-direction: column; gap: 10px;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size: 11px; color: #ccc;">
+                <input type="checkbox" id="snap-to-grid" class="ui-ctrl" checked style="width:auto;"> SNAP TO GRID
+            </label>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title"><i class="ph ph-usb"></i> Device</div>
+        <div class="input-group" style="margin-bottom: 8px;">
+            <select id="port-select" class="ui-ctrl"></select>
+        </div>
+        <select id="baud-rate" class="ui-ctrl" style="margin-bottom: 8px;">
+            <option value="9600">9600</option>
+            <option value="38400">38400</option>
+            <option value="115200">115200</option>
+        </select>
+        <button class="btn btn-accent ui-ctrl" onclick="connectDevice()" style="width:100%;">Connect</button>
+    </div>
+</aside>
+
+<main class="main">
+    <div class="status-bar">
+        <div class="brand"><i class="ph-bold ph-sketch-logo"></i> REDSAIL RS720C</div>
+        <div class="status-item">
+            <span id="status-dot" class="dot"></span>
+            <span id="status-text">OFFLINE</span>
+        </div>
+    </div>
+
+    <div class="canvas-container-outer" id="canvas-container">
+        <canvas id="c"></canvas>
+    </div>
+
+    <div class="floating-actions">
+        <button class="btn btn-accent ui-ctrl" onclick="changeZoom(1.2)"><i class="ph ph-magnifying-glass-plus"></i></button>
+        <button class="btn btn-accent ui-ctrl" onclick="changeZoom(0.8)"><i class="ph ph-magnifying-glass-minus"></i></button>
+        <button class="btn btn-accent ui-ctrl" onclick="resetZoom()"><i class="ph ph-frame-corners"></i></button>
+    </div>
+</main>
+
+<aside class="control-panel">
+    <div class="card">
+        <div class="card-title"><i class="ph ph-game-controller"></i> Jog & Origin</div>
+        <div class="jog-layout">
+            <div class="jog-diamond">
+                <button class="btn-jog up ui-ctrl" onmousedown="startJog('up')" onmouseup="stopJog()" onmouseleave="stopJog()"><i class="ph-bold ph-caret-up"></i></button>
+                <button class="btn-jog left ui-ctrl" onmousedown="startJog('left')" onmouseup="stopJog()" onmouseleave="stopJog()"><i class="ph-bold ph-caret-left"></i></button>
+                <button class="btn-jog center ui-ctrl accent" onclick="setOrigin()" title="Set Origin"><i class="ph-bold ph-crosshair"></i></button>
+                <button class="btn-jog right ui-ctrl" onmousedown="startJog('right')" onmouseup="stopJog()" onmouseleave="stopJog()"><i class="ph-bold ph-caret-right"></i></button>
+                <button class="btn-jog down ui-ctrl" onmousedown="startJog('down')" onmouseup="stopJog()" onmouseleave="stopJog()"><i class="ph-bold ph-caret-down"></i></button>
+            </div>
+            <div class="jog-info">
+                <div class="pos-box">
+                    <div class="pos-item"><span>X</span><strong id="pos-x">0</strong></div>
+                    <div class="pos-item"><span>Y</span><strong id="pos-y">0</strong></div>
+                </div>
+                <div class="input-group">
+                    <label>Step</label>
+                    <select id="stepSize" class="ui-ctrl">
+                        <option value="40">1mm</option>
+                        <option value="400" selected>10mm</option>
+                        <option value="2000">50mm</option>
+                    </select>
+                </div>
+                <button class="btn ui-ctrl" style="width:100%;" onclick="goToOrigin()"><i class="ph ph-house"></i> HOME</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title"><i class="ph ph-play-circle"></i> Execution</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+            <button class="btn ui-ctrl" onclick="previewPlot()">PREVIEW</button>
+            <button class="btn ui-ctrl" onclick="checkBoundary()">TRACE</button>
+        </div>
+        <button class="btn btn-accent ui-ctrl" onclick="startPlot()" style="width:100%; font-size: 16px; height: 50px;">START JOB</button>
+        <div id="progress-bar" style="margin-top: 10px;"><div id="fill"></div></div>
+    </div>
+
+    <div class="card" style="flex: 1; display: flex; flex-direction: column;">
+        <div class="card-title"><i class="ph ph-terminal-window"></i> Console</div>
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <input type="text" id="cmdInput" class="ui-ctrl" placeholder="HPGL..." onkeyup="if(event.key==='Enter') sendCmd()">
+            <button class="btn btn-accent ui-ctrl" onclick="sendCmd()">SEND</button>
+        </div>
+        <div id="console-output" style="flex: 1;"></div>
+    </div>
+
+</aside>
+
+<script src="js/app.js"></script>
+</body>
+</html>
